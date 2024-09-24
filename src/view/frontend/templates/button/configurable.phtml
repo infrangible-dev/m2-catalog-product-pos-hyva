@@ -1,0 +1,79 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * @author      Andreas Knollmann
+ * @copyright   2014-2024 Softwareentwicklung Andreas Knollmann
+ * @license     http://www.opensource.org/licenses/mit-license.php MIT
+ */
+
+use Infrangible\CatalogProductPOS\Block\Button;
+use Magento\Framework\Escaper;
+
+/** @var Escaper $escaper */
+/** @var Button $block */
+?>
+
+<script id="catalog-product-pos-button-template" type="text/x-handlebars">
+    <button type="button"
+            title="{{buttonText}}"
+            class="btn btn-primary catalog-product-pos-button {{attributeCodeClass}}> {{attributeValueClass}}"
+            id="product-button-pos"
+            onclick="window.location.href = '{{buttonUrl}}';">
+        <span class="hidden sm:block md:hidden lg:block">
+            {{buttonText}}
+        </span>
+    </button>
+    <?= $block->getChildHtml(); ?>
+</script>
+
+<script>
+    var posChildProductData = <?= /* @noEscape */ $block->getChildProductData(); ?>;
+
+    window.addEventListener('configurable-selection-changed', function(event) {
+        if (event.detail.candidates.length === 1) {
+            var selectedProductId = event.detail.productIndex;
+            var selectedProductData = posChildProductData[selectedProductId];
+
+            var posButtonBoxNode;
+            if (selectedProductData.isSaleable) {
+                posButtonBoxNode = document.querySelector('.box-tocart.catalog-product-pos-button-box');
+                if (posButtonBoxNode) {
+                    posButtonBoxNode.remove();
+                }
+                document.querySelector('[x-data="initQtyField()"]').style.display = 'block';
+                document.querySelector('#product-addtocart-button').style.display = 'flex';
+            } else {
+                document.querySelector('[x-data="initQtyField()"]').style.display = 'none';
+                document.querySelector('#product-addtocart-button').style.display = 'none';
+
+                if (selectedProductData.isNotSaleable && selectedProductData.showButton) {
+                    posButtonBoxNode = document.querySelector('.box-tocart.catalog-product-pos-button-box');
+                    if (! posButtonBoxNode) {
+                        posButtonBoxNode = document.createElement("div");
+                        posButtonBoxNode.classList.add('box-tocart');
+                        posButtonBoxNode.classList.add('catalog-product-pos-button-box');
+                        document.querySelector(".flex.mt-4.ml-auto.sm\\:mt-0").append(posButtonBoxNode);
+                    }
+
+                    var template = Handlebars.compile(
+                        document.querySelector('#catalog-product-pos-button-template').innerHTML);
+
+                    var templateData = {
+                        buttonText: selectedProductData.buttonText,
+                        buttonUrl: selectedProductData.buttonUrl,
+                        attributeCodeClass: selectedProductData.attributeCodeClass,
+                        attributeValueClass: selectedProductData.attributeValueClass
+                    };
+
+                    posButtonBoxNode.innerHTML = template(templateData);
+                } else {
+                    document.querySelector('.box-tocart.catalog-product-pos-button-box').remove();
+                }
+            }
+        } else {
+            document.querySelector('#product-addtocart-button').style.display = 'flex';
+        }
+    });
+</script>
